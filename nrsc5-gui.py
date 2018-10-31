@@ -3,6 +3,7 @@
 
 #    NRSC5 GUI - A graphical interface for nrsc5
 #    Copyright (C) 2017  Cody Nybo
+#    updated to Gtk 3.0 by jarednthomas
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -17,10 +18,17 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os, sys, shutil, re, tempfile, md5, gtk, gobject, json, datetime, numpy, glob, time
+import os, sys, shutil, re, tempfile, md5, json, datetime, numpy, glob, time
 from subprocess import Popen, PIPE
 from threading import Timer, Thread
 from dateutil import tz
+
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk as Gtk
+from gi.repository import Gdk
+from gi.repository import GdkPixbuf
+from gi.repository import GObject as gobject
 from PIL import Image, ImageFont, ImageDraw
 
 # if nrsc5 and mpv are not in the system path, set the full path here
@@ -75,12 +83,12 @@ class NRSC5_GUI(object):
         }
         
         # setup bookmarks listview
-        nameRenderer = gtk.CellRendererText()
+        nameRenderer = Gtk.CellRendererText()
         nameRenderer.set_property("editable", True)
         nameRenderer.connect("edited", self.on_bookmarkNameEdited)
         
-        colStation = gtk.TreeViewColumn("Station", gtk.CellRendererText(), text=0)
-        colName    = gtk.TreeViewColumn("Name", nameRenderer, text=1)
+        colStation = Gtk.TreeViewColumn("Station", Gtk.CellRendererText(), text=0)
+        colName    = Gtk.TreeViewColumn("Name", nameRenderer, text=1)
         
         colStation.set_resizable(True)
         colStation.set_sort_column_id(2)
@@ -178,8 +186,8 @@ class NRSC5_GUI(object):
                 logo = os.path.join(self.aasDir, self.stationLogos[self.stationStr][self.stationNum])
                 if (os.path.isfile(logo)):
                     self.streamInfo["Logo"] = self.stationLogos[self.stationStr][self.stationNum]
-                    pixbuf = gtk.gdk.pixbuf_new_from_file(logo)
-                    pixbuf = pixbuf.scale_simple(200, 200, gtk.gdk.INTERP_HYPER)
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file(logo)
+                    pixbuf = GdkPixbuf.Pixbuf.scale_simple(200, 200, Gdk.INTERP_HYPER)
                     self.imgCover.set_from_pixbuf(pixbuf)
             else:
                 # add entry in database for the station if it doesn't exist
@@ -307,17 +315,17 @@ class NRSC5_GUI(object):
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>."""
 
-        about_dialog = gtk.AboutDialog()
+        about_dialog = Gtk.AboutDialog()
         about_dialog.set_transient_for(self.mainWindow)
         about_dialog.set_destroy_with_parent(True)
         about_dialog.set_name("NRSC5 GUI")
-        about_dialog.set_version("1.1.2")
+        about_dialog.set_version("1.1.3")
         about_dialog.set_copyright("Copyright \xc2\xa9 2017-2018 Cody Nybo")
-        about_dialog.set_website("https://github.com/cmnybo/nrsc5-gui")
+        about_dialog.set_website("https://github.com/jarednthomas/nrsc5-gui")
         about_dialog.set_comments("A graphical interface for nrsc5.")
         about_dialog.set_authors(authors)
         about_dialog.set_license(license)
-        about_dialog.set_logo(gtk.gdk.pixbuf_new_from_file("logo.png"))
+        about_dialog.set_logo(GdkPixbuf.Pixbuf.new_from_file("logo.png"))
 
         # callbacks for destroying the dialog
         def close(dialog, response, editor):
@@ -387,19 +395,19 @@ class NRSC5_GUI(object):
             if (btn == self.radMapTraffic):
                 self.mapData["mapMode"] = 0
                 mapFile = os.path.join("map", "TrafficMap.png")
-                if (os.path.isfile(mapFile)):                                                           # check if map exists
-                    mapImg = Image.open(mapFile).resize((200,200), Image.LANCZOS)                       # scale map to fit window
-                    self.imgMap.set_from_pixbuf(imgToPixbuf(mapImg))                                    # convert image to pixbuf and display
+                if (os.path.isfile(mapFile)):                                                           
+                    mapImg = Image.open(mapFile).resize((200,200), Image.LANCZOS)
+                    self.imgMap.set_from_pixbuf(imgToPixbuf(mapImg))
                 else:
-                    self.imgMap.set_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_LARGE_TOOLBAR)    # display missing image if file is not found
+                    self.imgMap.set_from_stock(Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.LARGE_TOOLBAR)
             
             elif (btn == self.radMapWeather):
                 self.mapData["mapMode"] = 1
                 if (os.path.isfile(self.mapData["weatherNow"])):
-                    mapImg = Image.open(self.mapData["weatherNow"]).resize((200,200), Image.LANCZOS)    # scale map to fit window
-                    self.imgMap.set_from_pixbuf(imgToPixbuf(mapImg))                                    # convert image to pixbuf and display 
+                    mapImg = Image.open(self.mapData["weatherNow"]).resize((200,200), Image.LANCZOS)
+                    self.imgMap.set_from_pixbuf(imgToPixbuf(mapImg))
                 else:
-                    self.imgMap.set_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_LARGE_TOOLBAR)    # display missing image if file is not found
+                    self.imgMap.set_from_stock(Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.LARGE_TOOLBAR)
     
     def on_btnMap_clicked(self, btn):
         # open map viewer window
@@ -452,7 +460,7 @@ class NRSC5_GUI(object):
     def checkStatus(self):
         # update status information
         def update():
-            gtk.threads_enter()
+            Gdk.threads_enter()
             try:
                 imagePath = ""
                 image = ""
@@ -493,12 +501,12 @@ class NRSC5_GUI(object):
                 if (self.xhdrChanged and self.lastImage != image and os.path.isfile(imagePath)):
                     self.xhdrChanged = False
                     self.lastImage = image
-                    pixbuf = gtk.gdk.pixbuf_new_from_file(imagePath)
-                    pixbuf = pixbuf.scale_simple(200, 200, gtk.gdk.INTERP_HYPER)
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file(imagePath)
+                    pixbuf = GdkPixbuf.Pixbuf.scale_simple(200, 200, Gdk.INTERP_HYPER)
                     self.imgCover.set_from_pixbuf(pixbuf)
                     self.debugLog("Image Changed")
             finally:
-                gtk.threads_leave()        
+                Gdk.threads_leave()        
         
         if (self.playing):
             gobject.idle_add(update)
@@ -822,14 +830,14 @@ class NRSC5_GUI(object):
 
     def getControls(self):
         # setup gui
-        builder = gtk.Builder()
+        builder = Gtk.Builder()
         builder.add_from_file("mainForm.glade")
         builder.connect_signals(self)
         
         # Windows
         self.mainWindow = builder.get_object("mainWindow")
         self.mainWindow.connect("delete-event", self.shutdown)
-        self.mainWindow.connect("destroy", gtk.main_quit)
+        self.mainWindow.connect("destroy", Gtk.main_quit)
         self.about_dialog = None
         
         # get controls
@@ -866,7 +874,7 @@ class NRSC5_GUI(object):
         self.lblBerMin     = builder.get_object("lblBerMin")
         self.lblBerMax     = builder.get_object("lblBerMax")
         self.lvBookmarks   = builder.get_object("listviewBookmarks")
-        self.lsBookmarks   = gtk.ListStore(str, str, int)
+        self.lsBookmarks   = Gtk.ListStore(str, str, int)
         
         self.lvBookmarks.set_model(self.lsBookmarks)
         self.lvBookmarks.get_selection().connect("changed", self.on_lvBookmarks_selection_changed)
@@ -1014,7 +1022,7 @@ class NRSC5_GUI(object):
                 winX, winY = self.mainWindow.get_position()
                 width, height = self.mainWindow.get_size()
                 config = {
-                    "CfgVersion": "1.1.0",
+                    "CfgVersion": "1.1.3",
                     "WindowX"   : winX,
                     "WindowY"   : winY,
                     "Width"     : width,
@@ -1047,7 +1055,7 @@ class NRSC5_GUI(object):
 class NRSC5_Map(object):
     def __init__(self, parent, callback, data):
         # setup gui
-        builder = gtk.Builder()
+        builder = Gtk.Builder()
         builder.add_from_file("mapForm.glade")
         builder.connect_signals(self)
         
@@ -1189,7 +1197,7 @@ class NRSC5_Map(object):
             
             self.imgMap.set_from_pixbuf(imgToPixbuf(mapImg))                                            # convert image to pixbuf and display
         else:
-            self.imgMap.set_from_stock(gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_LARGE_TOOLBAR)            # display missing image if file is not found
+            self.imgMap.set_from_stock(Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.LARGE_TOOLBAR)            # display missing image if file is not found
     
     def setMap(self, map):
         if (map == 0):  self.showImage(os.path.join("map", "TrafficMap.png"), False)                    # show traffic map
@@ -1211,9 +1219,9 @@ def tsToDt(ts):
     return datetime.datetime.utcfromtimestamp(ts)
 
 def imgToPixbuf(img):
-    # convert PIL.Image to gdk.pixbuf
+    # convert PIL.Image to Gdk.pixbuf
     imgArr = numpy.array(img.convert("RGB"))
-    return gtk.gdk.pixbuf_new_from_array(imgArr, gtk.gdk.COLORSPACE_RGB, 8)
+    return GdkPixbuf.Pixbuf.new_from_array(imgArr, Gdk.COLORSPACE_RGB, 8)
 
 
 if __name__ == "__main__":
@@ -1221,4 +1229,4 @@ if __name__ == "__main__":
     os.chdir(sys.path[0])
     nrsc5_gui = NRSC5_GUI()
     nrsc5_gui.mainWindow.show()
-    gtk.main()
+    Gtk.main()
